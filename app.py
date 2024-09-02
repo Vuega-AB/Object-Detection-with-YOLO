@@ -1,76 +1,63 @@
-from ultralytics import YOLO
+import streamlit as st
 import cv2
-import math 
+from ultralytics import YOLO
+from PIL import Image
+import numpy as np
+import tempfile
 
-# Start webcam
-cap = cv2.VideoCapture(0)
-cap.set(3, 640)
-cap.set(4, 480)
+# Load YOLOv9 custom model
+model = YOLO("yolov9c.pt")
 
-# Load YOLO model
-model = YOLO("yolo-Weights/yolov8n.pt")
-print("Model loaded successfully")
+# Streamlit UI
+st.set_page_config(page_title="Object Detection", page_icon="🖼")
 
-# Object classes
-classNames = ["person", "bicycle", "car", "motorbike", "aeroplane", "bus", "train", "truck", "boat",
-              "traffic light", "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat",
-              "dog", "horse", "sheep", "cow", "elephant", "bear", "zebra", "giraffe", "backpack", "umbrella",
-              "handbag", "tie", "suitcase", "frisbee", "skis", "snowboard", "sports ball", "kite", "baseball bat",
-              "baseball glove", "skateboard", "surfboard", "tennis racket", "bottle", "wine glass", "cup",
-              "fork", "knife", "spoon", "bowl", "banana", "apple", "sandwich", "orange", "broccoli",
-              "carrot", "hot dog", "pizza", "donut", "cake", "chair", "sofa", "pottedplant", "bed",
-              "diningtable", "toilet", "tvmonitor", "laptop", "mouse", "remote", "keyboard", "cell phone",
-              "microwave", "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase", "scissors",
-              "teddy bear", "hair drier", "toothbrush"]
+st.title("YOLOv9 Custom Object Detection")
 
-print(f"Total classes: {len(classNames)}")
+# Option to upload image or video
+upload_type = st.sidebar.selectbox("Choose Input Type", ["Image", "Video"])
 
-while True:
-    success, img = cap.read()
-    if not success:
-        print("Failed to capture image from webcam")
-        break
-    print("Image captured successfully")
+if upload_type == "Image":
+    uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
+    if uploaded_file is not None:
+        image = Image.open(uploaded_file)
+        st.write("The uploaded image")
+        st.image(image, caption="Uploaded Image", use_column_width=True)
 
-    results = model(img, stream=True)
-    print("Model inference completed")
+        # Convert image to array
+        image = np.array(image)
 
-    # Coordinates
-    for r in results:
-        boxes = r.boxes
-        print(f"Number of boxes detected: {len(boxes)}")
+        # Run YOLOv9 on the image
+        results = model(image)
 
-        for box in boxes:
-            # Bounding box
-            x1, y1, x2, y2 = box.xyxy[0]
-            x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)  # Convert to int values
-            print(f"Bounding box coordinates: ({x1}, {y1}), ({x2}, {y2})")
+        # Draw bounding boxes on the image
+        annotated_image = results[0].plot()  # This includes the bounding boxes
 
-            # Put box in cam
-            cv2.rectangle(img, (x1, y1), (x2, y2), (255, 0, 255), 3)
+        st.write("Objects detected")
+        # Display the image with detections
+        st.image(annotated_image, caption="Processed Image with Detections", use_column_width=True)
 
-            # Confidence
-            confidence = math.ceil((box.conf[0] * 100)) / 100
-            print(f"Confidence: {confidence}")
+elif upload_type == "Video":
+    uploaded_file = st.file_uploader("Choose a video...", type=["mp4", "mov", "avi", "mkv"])
+    if uploaded_file is not None:
+        # Save the uploaded file temporarily to disk
+        tfile = tempfile.NamedTemporaryFile(delete=False) 
+        tfile.write(uploaded_file.read())
+        cap = cv2.VideoCapture(tfile.name)
 
-            # Class name
-            cls = int(box.cls[0])
-            print(f"Class ID: {cls}, Class name: {classNames[cls]}")
+        stframe = st.empty()
+        while cap.isOpened():
+            ret, frame = cap.read()
+            if not ret:
+                break
 
-            # Object details
-            org = [x1, y1]
-            font = cv2.FONT_HERSHEY_SIMPLEX
-            fontScale = 1
-            color = (255, 0, 0)
-            thickness = 2
+            # Run YOLOv9 on the frame
+            results = model(frame)
 
-            cv2.putText(img, classNames[cls], org, font, fontScale, color, thickness)
+            # Draw bounding boxes on the frame
+            annotated_frame = results[0].plot()
 
-    cv2.imshow('Webcam', img)
-    if cv2.waitKey(1) == ord('q'):
-        print("Quitting...")
-        break
+            # Display the frame with detections
+            stframe.image(annotated_frame, channels="BGR")
 
-cap.release()
-cv2.destroyAllWindows()
-print("Webcam released and windows destroyed")
+        cap.release()
+        tfile.close()
