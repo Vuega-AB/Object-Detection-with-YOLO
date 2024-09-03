@@ -6,7 +6,8 @@ import numpy as np
 import tempfile
 
 # Load YOLOv9 custom model
-model = YOLO("yolov9c.pt")
+# model = YOLO("yolov9c.pt")
+model = YOLO("yolov8n.pt") 
 
 # Streamlit UI
 st.set_page_config(page_title="Object Detection", page_icon="🖼")
