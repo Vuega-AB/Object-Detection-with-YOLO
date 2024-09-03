@@ -11,7 +11,7 @@ model = YOLO("yolov8n.pt")
 
 # Streamlit UI
 st.set_page_config(page_title="Object Detection", page_icon="🖼")
-st.title("YOLOv9 Custom Object Detection")
+st.title("YOLOv8 Custom Object Detection")
 
 # Option to upload image, video, or open camera
 upload_type = st.sidebar.selectbox("Choose Input Type", ["Image", "Video", "Camera"])
@@ -20,7 +20,7 @@ if upload_type == "Image":
     uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
     if uploaded_file is not None:
         image = Image.open(uploaded_file)
-        st.image(image, caption="Uploaded Image", use_column_width=True)
+        #st.image(image, caption="Uploaded Image", use_column_width=True)
 
         # Convert image to array
         image = np.array(image)
@@ -47,7 +47,7 @@ elif upload_type == "Video":
             if not ret:
                 break
 
-            # Run YOLOv9 on the frame
+            # Run YOLOv8 on the frame
             results = model(frame)
 
             # Draw bounding boxes on the frame
